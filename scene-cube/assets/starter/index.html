@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="六处活着的像素生境。拖动魔方，让礁鲨、松林和月下的水草随着九格重新拼合。">
+  <meta name="description" content="自然奇境与原版六面。拖动魔方，让雪山、竹林和云岛随九格重新拼合。">
   <title>六面引力 · Scene Cube</title>
   <link rel="stylesheet" href="styles.css">
   <script defer src="cube-state.js"></script>
@@ -11,9 +11,12 @@
   <script defer src="ground-water.js"></script>
   <script defer src="ground-valley.js"></script>
   <script defer src="ground-night.js"></script>
+  <script defer src="ground-natural.js"></script>
   <script defer src="ground-surfaces.js"></script>
   <script defer src="cube-habitats.js"></script>
   <script defer src="habitat-renderer.js"></script>
+  <script defer src="habitat-framing.js"></script>
+  <script defer src="frame-sampler.js"></script>
   <script defer src="cube.js"></script>
 </head>
 <body>
@@ -36,6 +39,10 @@
         <div id="fallback" class="fallback" hidden>请在支持 WebGL 的浏览器中打开此预览。</div>
       </section>
       <aside class="inspector" aria-label="场景及转层控制">
+        <div class="suite-switch" role="group" aria-label="生境套装">
+          <button id="suite-natural" type="button" aria-pressed="true">自然奇境</button>
+          <button id="suite-original" type="button" aria-pressed="false">原版六面</button>
+        </div>
         <div class="intro">
           <p class="kicker" id="scene-kind">像素生境</p>
           <h1 id="scene-name">场景魔方</h1>
@@ -60,6 +67,7 @@
           <button id="undo" type="button" disabled>撤销</button>
         </div>
         <p id="feedback" role="status" class="feedback">可用任意转轴和层进行组合。</p>
+        <output id="performance" class="feedback performance" aria-live="off" hidden></output>
       </aside>
     </div>
     <footer class="transport">

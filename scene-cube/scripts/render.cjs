@@ -8,7 +8,19 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { parseArgs } = require("node:util");
 
-const help = "node scripts/render.cjs INPUT.html OUTPUT.mp4 [--duration 12 --fps 60 --width 1280 --height 720] [--audio path] [--playwright path --browser path]";
+const help = "node scripts/render.cjs INPUT.html OUTPUT.mp4 [--duration 12 --fps 60 --width 1280 --height 720] [--suite natural|original] [--audio path (original only)] [--playwright path --browser path]";
+
+// Pure configuration: testable without importing Playwright or starting a browser.
+function exportSettings(input, values = {}) {
+  const suite = values.suite ?? "natural";
+  if (suite !== "natural" && suite !== "original") throw new Error(`Invalid suite: ${suite}. Use natural or original.`);
+  if (/[?#]/.test(input)) throw new Error("INPUT must be a local HTML path without a query or fragment; select the scene with --suite original or --suite natural.");
+  if (suite === "natural" && values.audio) throw new Error("Natural exports are silent; --audio is supported only with --suite original.");
+  const entry = pathToFileURL(path.resolve(input));
+  entry.searchParams.set("export", "1");
+  entry.searchParams.set("suite", suite);
+  return { suite, entry: entry.href, audioFile: values.audio ? path.resolve(values.audio) : null };
+}
 
 function positive(value, name, integer) {
   const parsed = Number(value);
@@ -80,6 +92,7 @@ async function main() {
       fps:{type:"string",default:"60"},
       width:{type:"string",default:"1280"},
       height:{type:"string",default:"720"},
+      suite:{type:"string",default:"natural"},
       audio:{type:"string"},
       playwright:{type:"string"},
       browser:{type:"string"}
@@ -88,6 +101,7 @@ async function main() {
   if (values.help) { console.log(help); return; }
   if (positionals.length !== 2) throw new Error(help);
   const [input,output] = positionals.map(file=>path.resolve(file));
+  const settings = exportSettings(input, values);
   if (path.extname(output).toLowerCase() !== ".mp4") throw new Error("Output must end in .mp4.");
   const exists=await fs.lstat(output).then(()=>true,err=>{
     if(err.code==="ENOENT") return false;
@@ -95,7 +109,7 @@ async function main() {
   });
   if(exists) throw new Error(`Output already exists: ${output}`);
   await fs.access(input,constants.R_OK);
-  const audioFile=values.audio ? path.resolve(values.audio) : null;
+  const audioFile=settings.audioFile;
   if(audioFile)await fs.access(audioFile,constants.R_OK);
   const width=positive(values.width,"width",true), height=positive(values.height,"height",true);
   if(width%2 || height%2) throw new Error("Use even dimensions for yuv420p.");
@@ -109,9 +123,7 @@ async function main() {
     const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
     const errors=[];
     page.on("pageerror",err=>errors.push(err.message));
-    const entry=pathToFileURL(input);
-    entry.searchParams.set("export","1");
-    await page.goto(entry.href);
+    await page.goto(settings.entry);
     const properties=await page.evaluate(()=>({
       clock:typeof window.renderAt,duration:window.sceneCube?.duration
     }));
@@ -127,7 +139,9 @@ async function main() {
   }
 }
 
-main().catch(error=>{
+module.exports = { exportSettings };
+
+if (require.main === module) main().catch(error=>{
   console.error(error.message);
   process.exitCode=1;
 });

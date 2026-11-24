@@ -57,6 +57,20 @@ test("install writes a complete skill into the chosen project's discovery direct
   await assert.rejects(command(temp, "install", "--project", project, "--user"), /Choose either/);
 });
 
+test("vercel publishes the same offline demo with no dependencies", async () => {
+  const config = JSON.parse(await fs.readFile(path.join(repo, "vercel.json"), "utf8"));
+  const pkg = JSON.parse(await fs.readFile(path.join(repo, "package.json"), "utf8"));
+  assert.equal(config.framework, null);
+  assert.equal(config.installCommand, "");
+  assert.equal(config.buildCommand, "rm -rf dist && node scripts/world-cube.cjs deploy");
+  assert.equal(config.outputDirectory, "dist");
+  assert.equal(pkg.private, true);
+  assert.equal(pkg.engines.node, "22.x");
+  assert.equal(pkg.dependencies, undefined);
+  assert.equal(pkg.devDependencies, undefined);
+  assert.equal(await fs.readFile(path.join(repo, "LICENSE"), "utf8").then(text => text.includes("MIT License")), true);
+});
+
 test("a destination nested inside the starter leaves the source untouched", async () => {
   const pathInsideStarter = path.join(repo, "scene-cube", "assets", "starter", "uncreated", "nested");
   await assert.rejects(command(repo, "deploy", "--out", pathInsideStarter), /outside the source tree/);

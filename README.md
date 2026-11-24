@@ -24,6 +24,20 @@ node scripts/world-cube.cjs deploy
 
 打开 `dist/index.html`。整个 `dist/` 可以复制到别处离线使用，无需安装 npm 依赖或启动服务器。结果会输出入口的绝对路径。重复执行会复用相同的文件。如果目标已有其他内容，可以用 `--out 路径` 生成到另一个目录。
 
+## 部署到 Vercel
+
+线上页面使用同一条静态导出，不改魔方、景观、品牌或 [MIT 许可证](LICENSE)。仓库根目录的 [`vercel.json`](vercel.json) 固定为：
+
+| 设置 | 值 |
+| --- | --- |
+| Framework | 无 |
+| Node.js | `22.x`（[`package.json`](package.json) 的 `engines.node`，没有依赖） |
+| Install Command | 空字符串，跳过安装 |
+| Build Command | `rm -rf dist && node scripts/world-cube.cjs deploy` |
+| Output Directory | `dist` |
+
+构建前清掉 `dist/`，是因为导出命令会保留已有且内容不同的目录。Vercel 的干净构建目录里，这条命令只把 `scene-cube/assets/starter/` 复制成可离线打开的静态站点。`dist/` 仍然不入库。
+
 ## 安装 Codex Skill
 
 从仓库根目录运行以下命令，将 Skill 安装到指定项目的 `.agents/skills/scene-cube/`。
@@ -54,7 +68,7 @@ node --test
 
 ## English
 
-World Cube is a Codex skill and an offline browser demo for a twistable miniature world. Each face is a 3×3 terrain grid with its own gravity. Run `node scripts/world-cube.cjs deploy` and open `dist/index.html`. See the [English quick start](scene-cube/README.md) and [skill guide](scene-cube/SKILL.md).
+World Cube is a Codex skill and an offline browser demo for a twistable miniature world. Each face is a 3×3 terrain grid with its own gravity. Run `node scripts/world-cube.cjs deploy` and open `dist/index.html`. The same export is what Vercel publishes: Node.js 22.x, no install, and `dist/` as the static output. See the [English quick start](scene-cube/README.md) and [skill guide](scene-cube/SKILL.md).
 
 ## 许可与灵感
 

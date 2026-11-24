@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "rm -rf dist && node scripts/world-cube.cjs deploy",
+  "outputDirectory": "dist"
+}

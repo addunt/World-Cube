@@ -13,6 +13,14 @@ globalThis.GroundSurfaces=(()=>{
     return (1-a)*((1-b)*hash(i,j)+b*hash(i,j+1))+a*((1-b)*hash(i+1,j)+b*hash(i+1,j+1));
   }
   const water=(x,y)=>Math.sin(21*x+4.6*y+2*Math.sin(y*8))*.52+Math.sin(10*y-3*x+1.4*Math.cos(x*8))*.48;
+  const naturalPalettes={
+          snow:[[179,208,219],[237,246,238],[45,119,119],[111,184,169],[152,175,176]],
+          oasis:[[192,139,68],[244,207,130],[23,85,83],[54,138,126],[163,151,91]],
+          bamboo:[[53,94,60],[131,161,99],[37,102,104],[112,174,157],[134,152,113]],
+          firefly:[[76,91,54],[125,135,78],[24,57,53],[59,102,82],[107,116,70]],
+          volcano:[[40,45,49],[98,91,79],[178,51,24],[255,145,48],[115,71,49]],
+          island:[[104,147,83],[184,200,125],[104,149,170],[176,203,209],[135,159,124]]
+        };
   function get(id){
     if(cache.has(id))return cache.get(id);
     const canvas=document.createElement("canvas");canvas.width=canvas.height=size;
@@ -22,7 +30,15 @@ globalThis.GroundSurfaces=(()=>{
       const f=field(x,y,2.0)*.48+field(x,y,5.1)*.32+field(x,y,12.5)*.20;
       const fine=field(x,y,31),salt=hash(i,j),vein=water(x,y);
       let c;
-      if(id==="autumn"||id==="lake"){
+      if(Object.hasOwn(naturalPalettes,id)){
+        const shore=GroundNatural.surface(id,x,y);
+        const [a,b,wa,wb,edge]=naturalPalettes[id];
+        c=shore>=0?mix(edge,mix(a,b,f),clamp(shore*12)):mix(edge,mix(wa,wb,f),clamp(-shore*14));
+        if(shore<-.04&&vein>.76)c=mix(c,id==="volcano"?[255,202,91]:[186,214,183],.35);
+        if(id==="oasis"&&shore>0){const crest=Math.sin(y*43+x*13+field(x,y,3)*5);if(crest>.87)c=mix(c,[255,224,157],.32);}
+        if(id==="snow"&&shore>0&&fine>.64)c=mix(c,[251,255,247],.43);
+        if(id==="volcano"&&shore>.04&&salt>.93)c=mix(c,[140,117,88],.32);
+      }else if(id==="autumn"||id==="lake"){
         const autumn=id==="autumn",shore=GroundValley.surface(id,x,y);
         const greenery=autumn?mix([89,101,57],[161,144,76],f):mix([55,86,61],[129,130,75],f);
         const sand=autumn?[167,145,98]:[195,158,109];

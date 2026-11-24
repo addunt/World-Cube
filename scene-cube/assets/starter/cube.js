@@ -3,25 +3,43 @@
 (() => {
   const $ = id => document.getElementById(id);
   const stage = $("world");
-  const exportMode = new URLSearchParams(location.search).has("export");
+  const params = new URLSearchParams(location.search);
+  const exportMode = params.has("export");
+  const diagnostics=params.has("diagnostics")&&!exportMode?FrameSampler():null;
+  let suite = params.get("suite")==="original"?"original":"natural";
+  const suiteButtons = ["natural","original"];
+  function markSuite(){for(const key of suiteButtons) $("suite-"+key).setAttribute("aria-pressed",String(key===suite));}
+  markSuite();
   document.body.classList.toggle("export", exportMode);
   const gl = stage.getContext("webgl", { alpha:true, antialias:true, premultipliedAlpha:true });
   if (!gl) {
     $("fallback").hidden = false;
-    for (const id of ["play","seek","reset","positive","negative","undo","close-view"]) $(id).disabled = true;
+    for (const id of ["play","seek","reset","positive","negative","undo","close-view","suite-natural","suite-original"]) $(id).disabled = true;
     return;
   }
 
+  if(diagnostics){
+    $("performance").hidden=false;
+    $("performance").textContent="RAF 采样中…";
+    document.addEventListener?.("visibilitychange",()=>{if(document.hidden)diagnostics.pause();});
+  }
   const duration = 19.2;
   const quarter = Math.PI/2;
   const state = CubeState;
   const art = CubeHabitats;
   const faces = Object.entries(state.faces);
-  const atlasOf = { PZ:"reef", PX:"marsh", PY:"autumn", NX:"lake", NZ:"root", NY:"kelp" };
-  const sceneById = new Map(art.scenes.map(scene => [scene.id, scene]));
+  // Renderer closes over this object: mutate its entries, never replace it.
+  const atlasOf = {...art.suites[suite].atlasOf};
+  let sceneById = new Map(art.suites[suite].scenes.map(scene => [scene.id, scene]));
   const portrait=GroundCamera.habitat;
   const azimuth={PY:24,PZ:16,PX:-23,NX:18,NZ:26,NY:-16};
-  const sceneView=(face,low)=>portrait(face,azimuth[face]+(low?16:0),low?26:40,low?1.40:1.21,low?1.78:1.43);
+  const naturalAngles={PY:[12,34],PZ:[14,42],PX:[40,32],NX:[-12,32],NZ:[22,40],NY:[-24,38]};
+  function sceneView(face,low){
+    const original=portrait(face,azimuth[face]+(low?16:0),low?26:40,low?1.40:1.21,low?1.78:1.43);
+    if(suite!=="natural"||low)return original;
+    const [a,h]=naturalAngles[face];
+    return HabitatFraming.fit(portrait(face,a,h,1.21,1.43),HabitatFraming.points(art,atlasOf,cubies),stage.clientWidth,stage.clientHeight,getCamera);
+  }
   const axisIndex = {x:0,y:1,z:2};
   const sceneTitle = key => sceneById.get(key)?.name || key;
   const faceOrder = ["PZ","PX","PY","NX","NZ","NY"];
@@ -54,6 +72,34 @@
     [18.00,portrait("NY",23,35,1.27,1.51)],[18.02,[.86,.39,.95,0,0,.05,0],true],[19.2,wide]
   ];
 
+  const naturalCues = [
+    "右层带着竹梢、棕榈和细雪一同翻转",
+    "雪地与溪岸随右层回到原位",
+    "中层带走石桥和沿溪漂流的竹叶",
+    "石桥、沙路和低云随中层复位",
+    "后层带着黑岩、熔岩沟和火星翻转",
+    "火山口与上升的灰烟回到原来的方位"
+  ];
+  const naturalBeats = beats.map((beat,i)=>({...beat,cue:naturalCues[i]}));
+  const naturalShots = [
+    [0,wide],[.72,portrait("PY",30,34,1.07,1.00)],
+    [1.57,portrait("PY",15,29,1.48,1.78,-.12,.03)],[2.11,portrait("PY",9,30,1.49,1.78,-.12,.03)],
+    [2.48,[.52,.47,1.00,0,0,.23,.03]],[4.18,[.52,.47,1.00,0,0,.23,.03]],
+    [4.20,portrait("PZ",24,35,1.24,1.58),true],[5.70,portrait("PZ",12,29,1.42,1.72,.02,-.08)],
+    [6.63,portrait("PZ",-12,36,1.32,1.62)],[7.04,portrait("PZ",-24,43,1.12,1.08)],
+    [7.82,portrait("PZ",-35,45,1.05,.88)],
+    [7.84,portrait("NX",31,32,1.16,1.67),true],[8.84,portrait("NX",23,32,1.26,1.74)],
+    [10.34,portrait("NX",7,28,1.32,1.84,.02,.02)],[10.63,portrait("NX",2,30,1.29,1.79)],
+    [10.65,portrait("NZ",23,32,1.28,1.64),true],[11.79,portrait("NZ",7,30,1.34,1.71)],
+    [12.14,portrait("NZ",-13,40,1.15,1.24)],[13.83,portrait("NZ",-20,43,1.10,1.10)],
+    [13.85,portrait("PX",-25,30,1.34,1.68,.04,-.10),true],[15.48,portrait("PX",-7,33,1.46,1.74,.11,-.18)],
+    [15.84,portrait("PX",4,38,1.24,1.55)],
+    [15.86,portrait("NY",-24,31,1.27,1.64),true],[17.58,portrait("NY",12,28,1.38,1.72)],
+    [18.00,portrait("NY",23,32,1.23,1.54)],[18.02,[.86,.39,.95,0,0,.05,0],true],[19.2,wide]
+  ];
+  const selectedShots = ()=>suite==="natural"?naturalShots:shots;
+  const selectedBeats = ()=>suite==="natural"?naturalBeats:beats;
+
   const dot = (a,b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
   const clamp = (x,a=0,b=1) => Math.min(b,Math.max(a,x));
   const ease = t => { const q=clamp(t); return q*q*(3-2*q); };
@@ -73,6 +119,7 @@
   }
 
   function shotAt(t) {
+    const shots=selectedShots();
     const next=shots.findIndex(k=>k[0]>t);
     if(next===-1) return shots.at(-1)[1].slice();
     const a=shots[Math.max(next-1,0)],b=shots[next];
@@ -82,7 +129,7 @@
   }
   function sample(t) {
     let cubies=initial, cue="";
-    for (const beat of beats) {
+    for (const beat of selectedBeats()) {
       if(t<beat.start) break;
       if(t<beat.end) {
         const progress=(t-beat.start)/(beat.end-beat.start);
@@ -94,6 +141,7 @@
     return {cubies,cue};
   }
   function visibleFace(view) {
+    if(suite==="natural"&&!demoMode&&focusedFace)return focusedFace;
     const focus=view.slice(4,7);
     const dir=Math.hypot(...focus)>.65?focus:getCamera(view,1,1).eye;
     return faces.reduce((best,item)=>dot(item[1].normal,dir)>dot(best[1].normal,dir)?item:best)[0];
@@ -124,7 +172,7 @@
     document.documentElement.style.setProperty("--accent",scene.color);
     $("scene-kind").textContent=overview?"六面全景":aligned?"生态景观已对齐":parts===1?"景观朝向错位":"生态景观重组";
     $("scene-name").textContent=overview?"六面引力":sceneTitle(id);
-    $("scene-description").textContent=overview?"每面的九格拼成一块地面。拧动一层，树干、落叶和海底的气泡都会随那块地面转向。":aligned
+    $("scene-description").textContent=overview?(suite==="natural"?"六处自然奇境，九格各成天地。拧动一层，雪、竹叶与低云随地面一起翻转。":"每面的九格拼成一块地面。拧动一层，树干、落叶和海底的气泡都会随那块地面转向。"):aligned
       ?(scene.description||scene.caption)
       : parts===1?"九格来自同一景观。转动方向改变后，接缝也会随之改变。"
       : `这一面拼着 ${parts} 处不同景观，其中 ${count} 格来自「${sceneTitle(id)}」。`;
@@ -137,7 +185,7 @@
 
   let t=0, cubies=initial, view=shotAt(0), lastManualCue="";
   let playing=false, demoMode=true, animation=null, cameraMove=null;
-  let closeView=false;
+  let closeView=false,focusedFace=null,pendingFit=false;
   let startTime=0, lastManualTime=0, manualStart=0, raf=0;
   let pointer=null;
   const history=[];
@@ -159,6 +207,13 @@
       playerText();
     }
   }
+  function applyPendingFit(){
+    if(!pendingFit||cameraMove||animation)return;
+    pendingFit=false;
+    if(suite!=="natural"||!focusedFace||closeView||demoMode)return;
+    const resizeView=view.slice();resizeView[2]=1.21;
+    view=HabitatFraming.fit(resizeView,HabitatFraming.points(art,atlasOf,cubies),stage.clientWidth,stage.clientHeight,getCamera);
+  }
   function drawManual(clock,advanceCamera=true) {
     const modelTime=lastManualTime+(motionPreference.matches?0:clock-manualStart);
     if (cameraMove&&advanceCamera) {
@@ -175,8 +230,10 @@
         lastManualCue=`${active.move.axis.toUpperCase()} 轴 · ${active.move.layer} 层已转 ${active.move.dir>0?"+":"−"}90°`;
         animation=null;
       }
+      applyPendingFit();
       paint(cubies,animation?.move,active.move.dir*quarter*turnEase(u),view,modelTime);
     } else {
+      applyPendingFit();
       paint(cubies,null,0,view,modelTime);
     }
     inspect(cubies,view,animation?.move,animation?"":lastManualCue);
@@ -184,6 +241,13 @@
   }
   function refresh(clock) {
     raf=0;
+    if(diagnostics){
+      const count=diagnostics.record(clock,{suite,viewport:[globalThis.innerWidth,globalThis.innerHeight],stage:[stage.clientWidth,stage.clientHeight]});
+      if(count&&count%60===0){
+        const measured=diagnostics.read();
+        $("performance").textContent=`RAF ${measured.samples} 帧 · 中位 ${measured.medianMs.toFixed(1)} ms · P90 ${measured.p90Ms.toFixed(1)} ms · ${measured.viewport.join("×")} · ${suite}`;
+      }
+    }
     if(playing){
       const time=clock/1000-startTime;
       if(time>=duration) playing=false;
@@ -225,6 +289,7 @@
     toManual();
     if (animation) return;
     closeView=near;
+    focusedFace=face;pendingFit=false;
     $("close-view").setAttribute("aria-pressed",String(closeView));
     const goal=sceneView(face,near);
     if(motionPreference.matches) {
@@ -263,17 +328,36 @@
     return options[0];
   }
   function reset() {
+    if(diagnostics){diagnostics.reset();$("performance").textContent="RAF 采样中…";}
+    if(raf){cancelAnimationFrame(raf);raf=0;}
+    if(pointer){
+      const id=pointer.id;pointer=null;
+      if(stage.hasPointerCapture?.(id))stage.releasePointerCapture(id);
+    }
     playing=false;
-    demoMode=true;
+    demoMode=false;
     animation=null;
     cameraMove=null;
-    closeView=false;
+    closeView=false;focusedFace=null;pendingFit=false;
     $("close-view").setAttribute("aria-pressed","false");
     history.length=0;
-    drawDemo(0);
-    if(!motionPreference.matches){toManual();schedule();}
+    t=0;cubies=state.create();view=shotAt(0);
+    lastManualCue="";lastInspector="";
+    lastManualTime=0;manualStart=now();
+    drawManual(manualStart);
+    if(!motionPreference.matches)schedule();
+  }
+  function selectSuite(key){
+    if(key===suite)return;
+    suite=key;
+    Object.assign(atlasOf,art.suites[suite].atlasOf);
+    sceneById=new Map(art.suites[suite].scenes.map(scene=>[scene.id,scene]));
+    markSuite();
+    buildThumbnails();
+    reset();
   }
   function setDemo(t,play) {
+    focusedFace=null;pendingFit=false;
     animation=null;
     cameraMove=null;
     demoMode=true;
@@ -283,7 +367,9 @@
     drawDemo(t);
     if (play) schedule();
   }
-  function configure() {
+  function buildThumbnails() {
+    thumbnailButtons.clear();
+    $("scene-list").replaceChildren();
     for (const face of faceOrder) {
       const id=atlasOf[face];
       const button=document.createElement("button"), thumb=document.createElement("canvas");
@@ -301,6 +387,10 @@
       $("scene-list").append(button);
       thumbnailButtons.set(face,button);
     }
+  }
+  function configure() {
+    buildThumbnails();
+    for(const key of suiteButtons)$("suite-"+key).addEventListener("click",()=>selectSuite(key));
     const moveFromControls=dir=>({axis:$("axis").value,layer:Number($("layer").value),dir});
     $("positive").addEventListener("click",()=>turn(moveFromControls(1)));
     $("negative").addEventListener("click",()=>turn(moveFromControls(-1)));
@@ -364,6 +454,9 @@
       schedule();
     });
     new ResizeObserver(()=>{
+      // Coalesce resize events, including those received during a transition.
+      // drawManual consumes this once, after BOTH animations have settled.
+      if(suite==="natural"&&focusedFace&&!closeView&&!demoMode)pendingFit=true;
       if(demoMode) drawDemo(t);
       else drawManual(now(),false);
     }).observe(stage.parentElement);
@@ -375,7 +468,9 @@
       const active=demoMode?sample(t):{cubies,move:animation?.move};
       const frame=demoMode?shotAt(t):view;
       const face=visibleFace(frame);
-      return { mode:demoMode?"demo":"manual", time:t, move:active.move??null, face,
+      return { suite, mode:demoMode?"demo":"manual", time:t, playing, performance:diagnostics?.read()??null,
+        closeView, historyLength:history.length, cameraMoving:cameraMove!==null,
+        view:frame.slice(), cue:active.cue||lastManualCue, move:active.move??null, face,
         picture:readFace(active.cubies,face), cubies:structuredClone(active.cubies) };
     }
   });

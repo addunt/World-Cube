@@ -9,6 +9,19 @@
     {id:"root", name:"琥珀沉木", color:"#e5b765", description:"金色的小虾沿着沉木拱根活动，叶片和小鱼在暗处轻轻摆动。"},
     {id:"kelp", name:"水母夜航", color:"#a8bce8", description:"水母在深水海带林中收放伞盖，触腕与气泡在不同深度漂移。"}
   ];
+  const naturalScenes = [
+    {id:"snow",name:"雪山温泉",color:"#9fd4e0",description:"雪脊围住温热的青泉，雪檐木屋前蒸汽上升，细雪缓缓落在山间。"},
+    {id:"oasis",name:"沙漠绿洲",color:"#d89a3c",description:"新月沙丘环抱深青泉池，棕榈扎根湿沙，一只骆驼沿岸缓行。"},
+    {id:"bamboo",name:"竹林溪谷",color:"#3f8f5a",description:"石拱桥横跨弯溪，熊猫坐在桥阶旁；竹梢摇动，落叶逐水漂流。"},
+    {id:"firefly",name:"萤火湿地",color:"#d2e38a",description:"朽木卧在芦苇浅水间，青蛙跃上木头，萤火划出明灭的弧线。"},
+    {id:"volcano",name:"火山熔岩",color:"#e25b2a",description:"玄武岩尖峰守着敞开的火山口，熔岩沿沟流淌，火星与灰烟升起。"},
+    {id:"island",name:"云上海岛",color:"#8eb8d6",description:"草岛浮在低云之上，木风车缓缓转动，一线瀑布落向岛腹的石台。"}
+  ];
+  const suites = Object.freeze({
+    original:Object.freeze({scenes,atlasOf:{PZ:"reef",PX:"marsh",PY:"autumn",NX:"lake",NZ:"root",NY:"kelp"}}),
+    natural:Object.freeze({scenes:naturalScenes,atlasOf:{PY:"snow",PZ:"bamboo",PX:"oasis",NX:"island",NZ:"volcano",NY:"firefly"}})
+  });
+  const naturalIds=new Set(naturalScenes.map(scene=>scene.id));
   const rnd = seed => {
     const n=Math.sin(seed*127.1+91.7)*43758.5453123;
     return n-Math.floor(n);
@@ -120,8 +133,8 @@
   function model(id,t,staticPass){
     if(staticPass&&fixed.has(id))return fixed.get(id);
     const b=builder(staticPass);
-    const module=id==="reef"||id==="root"?root.GroundWater:id==="autumn"||id==="lake"?root.GroundValley:root.GroundNight;
-    module.draw(id,b,t);
+    const module=naturalIds.has(id)?root.GroundNatural:id==="reef"||id==="root"?root.GroundWater:id==="autumn"||id==="lake"?root.GroundValley:root.GroundNight;
+    module.draw(id,b,staticPass?0:t);
     const tiles=partition(b.shapes);
     if(staticPass)fixed.set(id,tiles);
     return tiles;
@@ -144,7 +157,7 @@
     }
     ctx.globalAlpha=1;
   }
-  const api={scenes,model,partition,thumbnail};
+  const api={scenes,suites,model,partition,thumbnail};
   root.CubeHabitats=api;
   if(typeof module==="object"&&module.exports)module.exports=api;
 })(globalThis);

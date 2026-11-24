@@ -49,7 +49,11 @@ The WebGL vertex shader subtracts the original slot center `[col−1, 1−row]`.
 The browser exposes `window.renderAt(t)` and `window.sceneCube.duration`. The model, layer interpolation and camera use the requested time on every export frame. Add `?export=1` to hide the preview controls. The optional exporter needs Node, Playwright with Chromium, and FFmpeg with `libx264` on PATH. From the skill directory run the following command with an unused output path.
 
 ```sh
-node scripts/render.cjs assets/starter/index.html gravity-cube.mp4 --fps 60 --width 1080 --height 1080 --audio assets/gravity-foley.flac
+# Natural Wonders: silent by default; --suite natural is shown explicitly.
+node scripts/render.cjs assets/starter/index.html natural-cube.mp4 --suite natural --fps 60 --width 1080 --height 1080
+
+# Original six habitats: bundled foley belongs only to this suite.
+node scripts/render.cjs assets/starter/index.html gravity-cube.mp4 --suite original --fps 60 --width 1080 --height 1080 --audio assets/gravity-foley.flac
 ```
 
-Use `--playwright` and `--browser` for an existing package directory and Chromium executable. At 19.2 seconds and 60 fps the exporter captures 1,152 frames at `frame / fps`. The bundled sound mixes creek, forest and underwater ambience with six wooden detents. Omit `--audio` for a silent export. Decode the film and inspect local verticals on two adjacent faces, the sweep of a turn, and a settled scene with living motion. Seek away and back to a moving frame to verify repeatability.
+Use `--playwright` and `--browser` for an existing package directory and Chromium executable. At 19.2 seconds and 60 fps the exporter captures 1,152 frames at `frame / fps`. The bundled sound mixes creek, forest and underwater ambience with six wooden detents. The CLI defaults to `--suite natural`, always silent, and rejects `--audio` for that suite. Use `--suite original` to render the original six habitats; omit `--audio` there for a silent original export. The CLI adds both `export=1` and the selected `suite` to the file URL before loading. `INPUT.html` is a filesystem path: do not append `?suite=original` to that filename. The query form is for opening the page directly in a browser only. Decode the film and inspect local verticals on two adjacent faces, the sweep of a turn, and a settled scene with living motion. Seek away and back to a moving frame to verify repeatability.

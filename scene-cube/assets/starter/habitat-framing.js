@@ -2,14 +2,19 @@
 
 // Camera composition only. Renderer projection, cubie attachments and the
 // original suite remain untouched. Bounds include the shell and all habitats,
-// not just the selected face. IMPORTANT: this is a finite sampled envelope
-// (10 living poses + .05 height margin), not an analytic bound for every time.
-// Tests check selected times/states; browser review is still required.
+// not just the selected face. Original/natural fallback uses 10 living poses
+// + .05 height margin, not an all-time proof. New providers can declare analytic
+// boxes or component-union corners. Browser review is still required.
 ((root)=>{
   const envelopes=new WeakMap();
   function envelope(art,id){
     if(!envelopes.has(art))envelopes.set(art,new Map());
     const cache=envelopes.get(art);if(cache.has(id))return cache.get(id);
+    const declared=art.bounds?.(id);
+    if(declared){
+      const result=declared.map(box=>{if(box.points)return box.points;const points=[];for(const x of [box.lo[0],box.hi[0]])for(const y of [box.lo[1],box.hi[1]])for(const z of [box.lo[2],box.hi[2]])points.push([x,y,z]);return points;});
+      cache.set(id,result);return result;
+    }
     const boxes=Array.from({length:9},()=>({lo:[Infinity,Infinity,Infinity],hi:[-Infinity,-Infinity,-Infinity]}));
     const include=tiles=>tiles.forEach((forms,i)=>{for(const form of forms)for(const p of form.points)for(let k=0;k<3;k++){
       boxes[i].lo[k]=Math.min(boxes[i].lo[k],p[k]);boxes[i].hi[k]=Math.max(boxes[i].hi[k],p[k]);
@@ -26,11 +31,12 @@
     });
     cache.set(id,result);return result;
   }
-  function points(art,atlas,cubies){
+  function points(art,atlas,cubies,onlyFace=null,move=null,angle=0){
     const result=[];
-    for(const x of [-1.491,1.491])for(const y of [-1.491,1.491])for(const z of [-1.491,1.491])result.push([x,y,z]);
+    if(!onlyFace)for(const x of [-1.491,1.491])for(const y of [-1.491,1.491])for(const z of [-1.491,1.491])result.push([x,y,z]);
     for(const cubie of cubies)for(const sticker of cubie.stickers){
-      const frame=root.CubeState.groundFrame(cubie,sticker.face);
+      if(onlyFace&&sticker.face!==onlyFace)continue;
+      const frame=root.CubeState.groundFrame(cubie,sticker.face,move,angle);
       for(const [u,v,z]of envelope(art,atlas[sticker.face])[sticker.row*3+sticker.col]){
         const x=u-(sticker.col-1),y=v-(1-sticker.row);
         result.push(frame.origin.map((n,k)=>n+frame.right[k]*x+frame.forward[k]*y+frame.normal[k]*(.491+z)));

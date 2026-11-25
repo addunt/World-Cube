@@ -1,20 +1,28 @@
 "use strict";
 
 (() => {
+  const resolution=CubeHabitats.resolveSuite(location.search);
+  const supported=document.getElementById("world").getContext("webgl",{alpha:true,antialias:true,premultipliedAlpha:true});
+  // One generation spans the pre-controller bootstrap and all later selections.
+  let suiteRequest=0,activeControls=null,resolveStartup,rejectStartup;
+  const startupReady=new Promise((resolve,reject)=>{resolveStartup=resolve;rejectStartup=reject;});
+  function start(initialSuite,initialNotice="") {
   const $ = id => document.getElementById(id);
   const stage = $("world");
   const params = new URLSearchParams(location.search);
   const exportMode = params.has("export");
   const diagnostics=params.has("diagnostics")&&!exportMode?FrameSampler():null;
-  let suite = params.get("suite")==="original"?"original":"natural";
-  const suiteButtons = ["natural","original"];
+  let suite = initialSuite;
+  let loading=false;
+  const suiteButtons = CubeHabitats.availableSuites();
   function markSuite(){for(const key of suiteButtons) $("suite-"+key).setAttribute("aria-pressed",String(key===suite));}
   markSuite();
+  $("suite-status").hidden=!initialNotice;$("suite-status").textContent=initialNotice;
   document.body.classList.toggle("export", exportMode);
-  const gl = stage.getContext("webgl", { alpha:true, antialias:true, premultipliedAlpha:true });
+  const gl = supported;
   if (!gl) {
     $("fallback").hidden = false;
-    for (const id of ["play","seek","reset","positive","negative","undo","close-view","suite-natural","suite-original"]) $(id).disabled = true;
+    for (const id of ["play","seek","reset","positive","negative","undo","close-view",...suiteButtons.map(key=>"suite-"+key)]) $(id).disabled = true;
     return;
   }
 
@@ -36,6 +44,10 @@
   const naturalAngles={PY:[12,34],PZ:[14,42],PX:[40,32],NX:[-12,32],NZ:[22,40],NY:[-24,38]};
   function sceneView(face,low){
     const original=portrait(face,azimuth[face]+(low?16:0),low?26:40,low?1.40:1.21,low?1.78:1.43);
+    if(art.suites[suite].angles){
+      const [a,h,la,lh,x,y]=art.suites[suite].angles[face];
+      return HabitatFraming.fit(portrait(face,low?la:a,low?lh:h,low?1.30:1.21,low?1.78:1.43,low?x:0,low?y:0),HabitatFraming.points(art,atlasOf,cubies,low?face:null),stage.clientWidth,stage.clientHeight,getCamera);
+    }
     if(suite!=="natural"||low)return original;
     const [a,h]=naturalAngles[face];
     return HabitatFraming.fit(portrait(face,a,h,1.21,1.43),HabitatFraming.points(art,atlasOf,cubies),stage.clientWidth,stage.clientHeight,getCamera);
@@ -97,8 +109,26 @@
     [15.86,portrait("NY",-24,31,1.27,1.64),true],[17.58,portrait("NY",12,28,1.38,1.72)],
     [18.00,portrait("NY",23,32,1.23,1.54)],[18.02,[.86,.39,.95,0,0,.05,0],true],[19.2,wide]
   ];
-  const selectedShots = ()=>suite==="natural"?naturalShots:shots;
-  const selectedBeats = ()=>suite==="natural"?naturalBeats:beats;
+  let easternShotCache=null;
+  function easternShots(){
+    const key=suite+":"+stage.clientWidth+":"+stage.clientHeight;if(easternShotCache?.key===key)return easternShotCache.shots;
+    let scene=initial;const points=[];
+    for(const beat of beats){
+      for(const angle of [0,Math.PI/8,Math.PI/4,Math.PI*3/8,Math.PI/2])points.push(...HabitatFraming.points(art,atlasOf,scene,null,beat.move,beat.move.dir*angle));
+      scene=state.turn(scene,beat.move);
+    }
+    const fit=view=>HabitatFraming.fit(view,points,stage.clientWidth,stage.clientHeight,getCamera);
+    const frames=[[0,fit(wide)]];
+    for(const [i,face]of ["PY","PZ","NX","NZ","PX","NY"].entries()){
+      const [a,h]=art.suites[suite].angles[face],view=fit(portrait(face,a,h,1.21,1.43));
+      frames.push([i===0?.72:i*3.0+.72,view,i>0,face],[Math.min(18.1,(i+1)*3+.70),view,false,face]);
+    }
+    frames.push([18.8,fit(wide)],[19.2,fit(wide)]);easternShotCache={key,shots:frames};return frames;
+  }
+  const selectedShots = ()=>art.suites[suite].angles?easternShots():suite==="natural"?naturalShots:shots;
+  const easternBeats=beats.map((beat,i)=>({...beat,cue:["右层带着东方山水的地面与景物翻转","右层的屋檐与地面回到原位","中层带着东方山水的地面与景物翻转","中层景物随地面复位","后层带着东方山水的地面与景物翻转","后层景物回到原来的方位"][i]}));
+  const suiteBeats=Object.fromEntries(Object.entries(art.suites).filter(([,def])=>def.cues).map(([key,def])=>[key,beats.map((beat,i)=>({...beat,cue:def.cues[i]}))]));
+  const selectedBeats = ()=>suiteBeats[suite]??(art.suites[suite].angles?easternBeats:suite==="natural"?naturalBeats:beats);
 
   const dot = (a,b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
   const clamp = (x,a=0,b=1) => Math.min(b,Math.max(a,x));
@@ -141,7 +171,13 @@
     return {cubies,cue};
   }
   function visibleFace(view) {
-    if(suite==="natural"&&!demoMode&&focusedFace)return focusedFace;
+    // A fitted camera can center near the cube origin. Focus-vector inference
+    // then chooses a neighbour despite an intentionally authored face portrait.
+    if(art.suites[suite].angles&&demoMode){
+      let target;for(const key of selectedShots()){if(key[0]>t)break;target=key[3];}
+      if(target)return target;
+    }
+    if(suite!=="original"&&!demoMode&&focusedFace)return focusedFace;
     const focus=view.slice(4,7);
     const dir=Math.hypot(...focus)>.65?focus:getCamera(view,1,1).eye;
     return faces.reduce((best,item)=>dot(item[1].normal,dir)>dot(best[1].normal,dir)?item:best)[0];
@@ -172,7 +208,7 @@
     document.documentElement.style.setProperty("--accent",scene.color);
     $("scene-kind").textContent=overview?"六面全景":aligned?"生态景观已对齐":parts===1?"景观朝向错位":"生态景观重组";
     $("scene-name").textContent=overview?"六面引力":sceneTitle(id);
-    $("scene-description").textContent=overview?(suite==="natural"?"六处自然奇境，九格各成天地。拧动一层，雪、竹叶与低云随地面一起翻转。":"每面的九格拼成一块地面。拧动一层，树干、落叶和海底的气泡都会随那块地面转向。"):aligned
+    $("scene-description").textContent=overview?(art.suites[suite].overview??(suite==="eastern"?"粉墙、梯田、雪院与海崖，六处东方山水随九格转动。":suite==="natural"?"六处自然奇境，九格各成天地。拧动一层，雪、竹叶与低云随地面一起翻转。":"每面的九格拼成一块地面。拧动一层，树干、落叶和海底的气泡都会随那块地面转向。")):aligned
       ?(scene.description||scene.caption)
       : parts===1?"九格来自同一景观。转动方向改变后，接缝也会随之改变。"
       : `这一面拼着 ${parts} 处不同景观，其中 ${count} 格来自「${sceneTitle(id)}」。`;
@@ -210,7 +246,8 @@
   function applyPendingFit(){
     if(!pendingFit||cameraMove||animation)return;
     pendingFit=false;
-    if(suite!=="natural"||!focusedFace||closeView||demoMode)return;
+    if(suite==="original"||!focusedFace||(closeView&&!art.suites[suite].angles)||demoMode)return;
+    if(art.suites[suite].angles){view=sceneView(focusedFace,closeView);return;}
     const resizeView=view.slice();resizeView[2]=1.21;
     view=HabitatFraming.fit(resizeView,HabitatFraming.points(art,atlasOf,cubies),stage.clientWidth,stage.clientHeight,getCamera);
   }
@@ -327,7 +364,14 @@
     options.sort((a,b)=>b.score-a.score);
     return options[0];
   }
-  function reset() {
+  function loadingUI(value){
+    loading=value;stage.setAttribute("aria-busy",String(value));
+    for(const id of ["positive","negative","undo","close-view","play","seek","axis","layer"])$(id).disabled=value;
+    for(const button of thumbnailButtons.values())button.disabled=value;
+    if(!value)playerText();
+  }
+  function reset(cancelRequest=true) {
+    if(cancelRequest){suiteRequest++;loadingUI(false);}
     if(diagnostics){diagnostics.reset();$("performance").textContent="RAF 采样中…";}
     if(raf){cancelAnimationFrame(raf);raf=0;}
     if(pointer){
@@ -348,15 +392,31 @@
     if(!motionPreference.matches)schedule();
   }
   function selectSuite(key){
-    if(key===suite)return;
-    suite=key;
-    Object.assign(atlasOf,art.suites[suite].atlasOf);
-    sceneById=new Map(art.suites[suite].scenes.map(scene=>[scene.id,scene]));
-    markSuite();
-    buildThumbnails();
-    reset();
+    const request=++suiteRequest;
+    if(key===suite&&!loading)return;
+    const commit=()=>{
+      loadingUI(false);suite=key;easternShotCache=null;
+      Object.assign(atlasOf,art.suites[suite].atlasOf);
+      sceneById=new Map(art.suites[suite].scenes.map(scene=>[scene.id,scene]));
+      markSuite();buildThumbnails();reset(false);
+      $("suite-status").hidden=true;
+      const url=new URL(location.href);url.searchParams.set("suite",suite);historyAPI(url);
+    };
+    if(art.isReady(key)){commit();return;}
+    if(raf){cancelAnimationFrame(raf);raf=0;}
+    if(pointer){if(stage.hasPointerCapture?.(pointer.id))stage.releasePointerCapture(pointer.id);pointer=null;}
+    playing=false;animation=null;cameraMove=null;pendingFit=false;
+    if(demoMode){const sampleNow=sample(t);cubies=sampleNow.cubies;view=shotAt(t);demoMode=false;}
+    lastManualTime=0;manualStart=now();drawManual(manualStart,false);loadingUI(true);
+    $("suite-status").hidden=false;$("suite-status").textContent="正在加载"+art.suites[key].name+"…";
+    art.ensureSuite(key).then(()=>{if(request===suiteRequest)commit();},()=>{
+      if(request!==suiteRequest)return;loadingUI(false);reset(false);
+      $("suite-status").hidden=false;$("suite-status").textContent="套装加载失败，当前套装仍可使用；可再次点击重试。";
+    });
   }
+  function historyAPI(url){window.history?.replaceState(null,"",url.href);}
   function setDemo(t,play) {
+    if(loading)return;
     focusedFace=null;pendingFit=false;
     animation=null;
     cameraMove=null;
@@ -390,7 +450,6 @@
   }
   function configure() {
     buildThumbnails();
-    for(const key of suiteButtons)$("suite-"+key).addEventListener("click",()=>selectSuite(key));
     const moveFromControls=dir=>({axis:$("axis").value,layer:Number($("layer").value),dir});
     $("positive").addEventListener("click",()=>turn(moveFromControls(1)));
     $("negative").addEventListener("click",()=>turn(moveFromControls(-1)));
@@ -399,7 +458,6 @@
       if(move&&turn(state.inverse(move),false)) history.pop();
       playerText();
     });
-    $("reset").addEventListener("click",reset);
     $("close-view").addEventListener("click",()=>{
       const face=visibleFace(demoMode?shotAt(t):view);
       look(face,!closeView);
@@ -414,7 +472,7 @@
       }
     });
     stage.addEventListener("pointerdown",event=>{
-      if(event.button!==0||animation||pointer) return;
+      if(loading||event.button!==0||animation||pointer) return;
       const rect=stage.getBoundingClientRect(), point=[event.clientX-rect.left,event.clientY-rect.top];
       const hit=playing?null:pickable.find(item=>inside(point,item.points));
       toManual();
@@ -444,6 +502,7 @@
       });
     }
     stage.addEventListener("keydown",event=>{
+      if(loading)return;
       if (!"wasd".includes(event.key.toLowerCase())||event.key.length!==1) return;
       event.preventDefault();
       toManual();
@@ -456,25 +515,53 @@
     new ResizeObserver(()=>{
       // Coalesce resize events, including those received during a transition.
       // drawManual consumes this once, after BOTH animations have settled.
-      if(suite==="natural"&&focusedFace&&!closeView&&!demoMode)pendingFit=true;
+      if(suite!=="original"&&focusedFace&&(!closeView||art.suites[suite].angles)&&!demoMode)pendingFit=true;
+      easternShotCache=null;
+      if(loading)return;
       if(demoMode) drawDemo(t);
       else drawManual(now(),false);
     }).observe(stage.parentElement);
   }
   window.renderAt = time => setDemo(time,false);
   window.sceneCube = Object.freeze({
-    duration,
+    duration,ready:startupReady,
     inspect() {
       const active=demoMode?sample(t):{cubies,move:animation?.move};
       const frame=demoMode?shotAt(t):view;
       const face=visibleFace(frame);
-      return { suite, mode:demoMode?"demo":"manual", time:t, playing, performance:diagnostics?.read()??null,
+      return { suite, loading, mode:demoMode?"demo":"manual", time:t, playing, performance:diagnostics?.read()??null,
         closeView, historyLength:history.length, cameraMoving:cameraMove!==null,
         view:frame.slice(), cue:active.cue||lastManualCue, move:active.move??null, face,
         picture:readFace(active.cubies,face), cubies:structuredClone(active.cubies) };
     }
   });
+  activeControls={selectSuite,reset};
   if(!exportMode) configure();
   drawDemo(0);
   if(!exportMode&&!motionPreference.matches){toManual();schedule();}
+  }
+  function beginInitial(key,notice="",rewrite=false){
+    const request=++suiteRequest;
+    const commit=(chosen,message,error)=>{
+      if(request!==suiteRequest)return;
+      start(chosen,message);
+      if(rewrite){const url=new URL(location.href);url.searchParams.set("suite",chosen);window.history?.replaceState(null,"",url.href);}
+      if(error&&new URLSearchParams(location.search).has("export"))rejectStartup(error);else resolveStartup();
+    };
+    if(CubeHabitats.isReady(key)){commit(key,notice);return;}
+    const status=document.getElementById("suite-status");status.hidden=false;status.textContent="正在加载"+CubeHabitats.suites[key].name+"…";
+    CubeHabitats.ensureSuite(key).then(()=>commit(key,notice),error=>commit("natural","套装加载失败，当前显示自然奇境。",error));
+  }
+  // These intent listeners must exist before the first asynchronous dependency.
+  // Reset before any world is active cancels the requested suite into natural.
+  if(!new URLSearchParams(location.search).has("export")){
+    for(const key of CubeHabitats.availableSuites())document.getElementById("suite-"+key).addEventListener("click",()=>{
+      if(activeControls)activeControls.selectSuite(key);else beginInitial(key,"",true);
+    });
+    document.getElementById("reset").addEventListener("click",()=>{
+      if(activeControls)activeControls.reset();else beginInitial("natural","",true);
+    });
+  }
+  window.sceneCube={ready:startupReady};
+  beginInitial(supported?resolution.suite:"natural",resolution.notice);
 })();

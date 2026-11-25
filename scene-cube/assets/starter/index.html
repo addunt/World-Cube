@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="自然奇境与原版六面。拖动魔方，让雪山、竹林和云岛随九格重新拼合。">
+  <meta name="description" content="自然奇境、东方山水、奇幻秘境与原版六面。拖动魔方，让地面、景物与当地重力随九格重新拼合。">
   <title>六面引力 · Scene Cube</title>
   <link rel="stylesheet" href="styles.css">
   <script defer src="cube-state.js"></script>
@@ -13,6 +13,7 @@
   <script defer src="ground-night.js"></script>
   <script defer src="ground-natural.js"></script>
   <script defer src="ground-surfaces.js"></script>
+  <script defer src="suite-catalog.js"></script>
   <script defer src="cube-habitats.js"></script>
   <script defer src="habitat-renderer.js"></script>
   <script defer src="habitat-framing.js"></script>
@@ -41,8 +42,12 @@
       <aside class="inspector" aria-label="场景及转层控制">
         <div class="suite-switch" role="group" aria-label="生境套装">
           <button id="suite-natural" type="button" aria-pressed="true">自然奇境</button>
+          <button id="suite-eastern" type="button" aria-pressed="false">东方山水</button>
+          <button id="suite-fantasy" type="button" aria-pressed="false">奇幻秘境</button>
+          <button id="suite-civilizations" type="button" aria-pressed="false">微缩文明</button>
           <button id="suite-original" type="button" aria-pressed="false">原版六面</button>
         </div>
+        <p id="suite-status" class="feedback" role="status" hidden></p>
         <div class="intro">
           <p class="kicker" id="scene-kind">像素生境</p>
           <h1 id="scene-name">场景魔方</h1>

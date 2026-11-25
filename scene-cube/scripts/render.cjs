@@ -8,14 +8,17 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { parseArgs } = require("node:util");
 
-const help = "node scripts/render.cjs INPUT.html OUTPUT.mp4 [--duration 12 --fps 60 --width 1280 --height 720] [--suite natural|original] [--audio path (original only)] [--playwright path --browser path]";
+const help = "node scripts/render.cjs INPUT.html OUTPUT.mp4 [--duration 12 --fps 60 --width 1280 --height 720] [--suite natural|eastern|fantasy|civilizations|original] [--audio path (original only)] [--playwright path --browser path]";
 
 // Pure configuration: testable without importing Playwright or starting a browser.
 function exportSettings(input, values = {}) {
   const suite = values.suite ?? "natural";
-  if (suite !== "natural" && suite !== "original") throw new Error(`Invalid suite: ${suite}. Use natural or original.`);
+  const catalog=require("../assets/starter/suite-catalog.js");
+  if(!["natural","original",...Object.keys(catalog.definitions)].includes(suite))throw new Error(`Invalid suite: ${suite}. Use natural, eastern, fantasy, civilizations or original.`);
+  if(catalog.definitions[suite]?.available===false)throw new Error(`Suite unavailable in this batch: ${suite}`);
   if (/[?#]/.test(input)) throw new Error("INPUT must be a local HTML path without a query or fragment; select the scene with --suite original or --suite natural.");
   if (suite === "natural" && values.audio) throw new Error("Natural exports are silent; --audio is supported only with --suite original.");
+  if(suite!=="original"&&values.audio)throw new Error("New suite exports are silent; --audio is supported only with --suite original.");
   const entry = pathToFileURL(path.resolve(input));
   entry.searchParams.set("export", "1");
   entry.searchParams.set("suite", suite);
@@ -124,6 +127,7 @@ async function main() {
     const errors=[];
     page.on("pageerror",err=>errors.push(err.message));
     await page.goto(settings.entry);
+    await page.evaluate(async()=>{await window.sceneCube?.ready;});
     const properties=await page.evaluate(()=>({
       clock:typeof window.renderAt,duration:window.sceneCube?.duration
     }));

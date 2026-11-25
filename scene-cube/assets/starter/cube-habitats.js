@@ -17,10 +17,13 @@
     {id:"volcano",name:"火山熔岩",color:"#e25b2a",description:"玄武岩尖峰守着敞开的火山口，熔岩沿沟流淌，火星与灰烟升起。"},
     {id:"island",name:"云上海岛",color:"#8eb8d6",description:"草岛浮在低云之上，木风车缓缓转动，一线瀑布落向岛腹的石台。"}
   ];
-  const suites = Object.freeze({
+  const legacy = Object.freeze({
     original:Object.freeze({scenes,atlasOf:{PZ:"reef",PX:"marsh",PY:"autumn",NX:"lake",NZ:"root",NY:"kelp"}}),
     natural:Object.freeze({scenes:naturalScenes,atlasOf:{PY:"snow",PZ:"bamboo",PX:"oasis",NX:"island",NZ:"volcano",NY:"firefly"}})
   });
+  const catalog=root.SuiteCatalog||(typeof require==="function"?require("./suite-catalog.js"):null);
+  const suites=catalog?catalog.create(legacy):legacy;
+  const byId=new Map(Object.entries(suites).flatMap(([suite,def])=>def.scenes.map(scene=>[scene.id,{suite,def}])));
   const naturalIds=new Set(naturalScenes.map(scene=>scene.id));
   const rnd = seed => {
     const n=Math.sin(seed*127.1+91.7)*43758.5453123;
@@ -131,11 +134,22 @@
   }
   const fixed=new Map();
   function model(id,t,staticPass){
+    if(!byId.has(id))throw Error("Unknown habitat: "+id);
+    const entry=byId.get(id);
+    if(entry.def.available===false)throw Error("Suite unavailable: "+entry.suite);
+    if(entry.def.provider&&!root[entry.def.provider])throw Error("Habitat not ready: "+id);
     if(staticPass&&fixed.has(id))return fixed.get(id);
     const b=builder(staticPass);
-    const module=naturalIds.has(id)?root.GroundNatural:id==="reef"||id==="root"?root.GroundWater:id==="autumn"||id==="lake"?root.GroundValley:root.GroundNight;
+    const module=entry.def.provider?root[entry.def.provider]:naturalIds.has(id)?root.GroundNatural:id==="reef"||id==="root"?root.GroundWater:id==="autumn"||id==="lake"?root.GroundValley:root.GroundNight;
     module.draw(id,b,staticPass?0:t);
-    const tiles=partition(b.shapes);
+    let tiles=partition(b.shapes);
+    // New providers can touch a clipping plane at a point/edge. Such contacts
+    // are not surfaces; remove zero-area remnants without changing legacy art.
+    if(entry.def.provider)tiles=tiles.map(forms=>forms.filter(form=>{
+      const a=form.points[0];let area=0;
+      for(let i=1;i<form.points.length-1;i++)area+=Math.hypot(...cross(form.points[i].map((n,k)=>n-a[k]),form.points[i+1].map((n,k)=>n-a[k])));
+      return area>1e-12;
+    }));
     if(staticPass)fixed.set(id,tiles);
     return tiles;
   }
@@ -157,7 +171,13 @@
     }
     ctx.globalAlpha=1;
   }
-  const api={scenes,suites,model,partition,thumbnail};
+  const api={scenes,suites,model,partition,thumbnail,
+    availableSuites:()=>catalog?catalog.available(suites):["natural","original"],
+    resolveSuite:search=>catalog.resolve(search,suites),
+    ensureSuite:key=>catalog.load(key,suites),
+    isReady:key=>catalog.isReady(key,suites),
+    bounds:id=>{const entry=byId.get(id);return entry?.def.provider?root[entry.def.provider]?.bounds?.(id):null;}
+  };
   root.CubeHabitats=api;
   if(typeof module==="object"&&module.exports)module.exports=api;
 })(globalThis);

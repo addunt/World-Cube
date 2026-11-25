@@ -23,6 +23,12 @@ globalThis.GroundSurfaces=(()=>{
         };
   function get(id){
     if(cache.has(id))return cache.get(id);
+    const eastern=globalThis.GroundEastern?.palettes?.[id]?.map(hex=>{const n=parseInt(hex.slice(1),16);return [n>>16,n>>8&255,n&255];});
+    if(id.startsWith("eastern_")&&!eastern)throw Error("Eastern material not ready: "+id);
+    const fantasy=globalThis.GroundFantasy?.palettes?.[id]?.map(hex=>{const n=parseInt(hex.slice(1),16);return [n>>16,n>>8&255,n&255];});
+    if(id.startsWith("fantasy_")&&!fantasy)throw Error("Fantasy material not ready: "+id);
+    const civilizations=globalThis.GroundCivilizations?.palettes?.[id]?.map(hex=>{const n=parseInt(hex.slice(1),16);return [n>>16,n>>8&255,n&255];});
+    if(id.startsWith("civ_")&&!civilizations)throw Error("Civilization material not ready: "+id);
     const canvas=document.createElement("canvas");canvas.width=canvas.height=size;
     const ctx=canvas.getContext("2d"),img=ctx.createImageData(size,size);
     for(let j=0;j<size;j++)for(let i=0;i<size;i++){
@@ -30,7 +36,24 @@ globalThis.GroundSurfaces=(()=>{
       const f=field(x,y,2.0)*.48+field(x,y,5.1)*.32+field(x,y,12.5)*.20;
       const fine=field(x,y,31),salt=hash(i,j),vein=water(x,y);
       let c;
-      if(Object.hasOwn(naturalPalettes,id)){
+      if(civilizations){
+        const shore=GroundCivilizations.surface(id,x,y),[a,b,wa,wb]=civilizations;
+        c=shore>=0?mix(a,b,f):mix(wa,wb,f);
+        if(shore<0&&vein>.76)c=mix(c,[194,221,202],.26);
+        if(id==="civ_greenhouse"&&(Math.abs(x*8-Math.round(x*8))<.06||Math.abs(y*8-Math.round(y*8))<.06))c=mix(c,[46,70,75],.45);
+        if(id==="civ_caravan"&&Math.abs(y+.85)<.32)c=mix(c,[177,155,121],.44);
+      }else if(fantasy){
+        const shore=GroundFantasy.surface(id,x,y),[a,b,wa,wb]=fantasy;
+        c=shore>=0?mix(a,b,f):mix(wa,wb,f);
+        if(shore<0&&vein>.76)c=mix(c,[187,219,215],.28);
+        if(id==="fantasy_starspring"&&shore>=0&&salt>.965)c=mix(c,[239,216,151],.67);
+        if(id==="fantasy_dragon"&&fine>.60)c=mix(c,[233,243,238],.30);
+      }else if(eastern){
+        const shore=GroundEastern.surface(id,x,y),[a,b,wa,wb]=eastern;
+        c=shore>=0?mix(a,b,f):mix(wa,wb,f);
+        if(shore<0&&vein>.76)c=mix(c,[184,210,195],.28);
+        if(id==="eastern_zentemple"&&fine>.58)c=mix(c,[244,246,231],.36);
+      }else if(Object.hasOwn(naturalPalettes,id)){
         const shore=GroundNatural.surface(id,x,y);
         const [a,b,wa,wb,edge]=naturalPalettes[id];
         c=shore>=0?mix(edge,mix(a,b,f),clamp(shore*12)):mix(edge,mix(wa,wb,f),clamp(-shore*14));

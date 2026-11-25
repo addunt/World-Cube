@@ -109,6 +109,11 @@ async function main() {
     for (const [, file] of html.matchAll(/\b(?:src|href)="([^"]+)"/g)) {
       if (!expected.has(path.normalize(file))) throw Error(`Missing starter resource: ${file}`);
     }
+    // HTML does not list the lazy suite scripts: validate their manifest too.
+    const catalog=require(path.join(starter,"suite-catalog.js"));
+    for(const def of Object.values(catalog.definitions))if(def.available)for(const file of def.files){
+      if(path.basename(file)!==file||!expected.has(file))throw Error(`Missing suite resource: ${file}`);
+    }
     const directory = values.out ? path.resolve(values.out) : path.join(repo, "dist");
     console.log(JSON.stringify(await publishTree(starter, directory, "index.html", expected)));
     return;

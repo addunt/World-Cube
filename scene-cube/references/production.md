@@ -52,8 +52,20 @@ The browser exposes `window.renderAt(t)` and `window.sceneCube.duration`. The mo
 # Natural Wonders: silent by default; --suite natural is shown explicitly.
 node scripts/render.cjs assets/starter/index.html natural-cube.mp4 --suite natural --fps 60 --width 1080 --height 1080
 
+# Eastern Landscapes: lazy-loaded first batch, also silent.
+node scripts/render.cjs assets/starter/index.html eastern-cube.mp4 --suite eastern --fps 60 --width 1080 --height 1080
+
+# Fantasy Realms: second local batch, also silent.
+node scripts/render.cjs assets/starter/index.html fantasy-cube.mp4 --suite fantasy --fps 60 --width 1080 --height 1080
+node scripts/render.cjs assets/starter/index.html civilizations-cube.mp4 --suite civilizations --fps 60 --width 1080 --height 1080
+
 # Original six habitats: bundled foley belongs only to this suite.
 node scripts/render.cjs assets/starter/index.html gravity-cube.mp4 --suite original --fps 60 --width 1080 --height 1080 --audio assets/gravity-foley.flac
 ```
 
 Use `--playwright` and `--browser` for an existing package directory and Chromium executable. At 19.2 seconds and 60 fps the exporter captures 1,152 frames at `frame / fps`. The bundled sound mixes creek, forest and underwater ambience with six wooden detents. The CLI defaults to `--suite natural`, always silent, and rejects `--audio` for that suite. Use `--suite original` to render the original six habitats; omit `--audio` there for a silent original export. The CLI adds both `export=1` and the selected `suite` to the file URL before loading. `INPUT.html` is a filesystem path: do not append `?suite=original` to that filename. The query form is for opening the page directly in a browser only. Decode the film and inspect local verticals on two adjacent faces, the sweep of a turn, and a settled scene with living motion. Seek away and back to a moving frame to verify repeatability.
+
+
+All five suites (`natural`, `eastern`, `fantasy`, `civilizations`, `original`) are implemented locally; default remains `natural`, not a publication/acceptance claim. Each new suite's two classic scripts load on demand over HTTP/file URLs; the encoder awaits `window.sceneCube.ready`. All non-original suites reject `--audio`; original retains explicit optional audio. Pure CLI tests do not establish absence of audio in an actual encoded MP4.
+
+Original/natural physical beats and old24 geometry/materials remain unchanged. Parent reports Eastern and Fantasy desktop two-action real-media checks; Fantasy independent120-test review closed threeImportant. Prior wrong-target/whole-cycle-sampling “frozen” reports were withdrawn. Parent's latest mobile check is still pending. Mobile full-cycle8px, realtouch, firstframe, prescribed10s warm/30s×3 median/P90 and encoded media are not established by Node tests. Civilizations is a fresh local candidate: all real desktop/mobile/readability/touch/performance/encoded-audio acceptance remains pending. A separate responsive, video-only20second QA recorder covers its19.2second long motions; no QA code is included in product builds. Do not infer a release from local construction or borrow historic natural RAF measurements.

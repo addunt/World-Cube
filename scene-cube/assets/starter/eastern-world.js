@@ -71,7 +71,12 @@
     out.features=[at(out.porter,[.075,.065,ground+.53]),out.shoots[0].tip];break;
    }
    case 'eastern_seacliff':{
-    out.waves=Array.from({length:3},(_,i)=>{const q=angle(t,4.8)+i*1.1,x=-.95+.22*sin(q),y=-1.38+i*.14,z=.055+.025*cos(q);return [[x-.325,y-.035,z-.025],[x+.325,y-.035,z-.025],[x+.325,y,z],[x-.325,y,z]];});
+    // Widen to .07 without changing the existing mid-strip trajectory. Only
+    // the shoremost ridge's right end bends .10 seawards: rotating the whole
+    // strip would push its opposite end into the boat's .06 dark-water gap.
+    out.waves=Array.from({length:3},(_,i)=>{const q=angle(t,4.8)+i*1.1,x=-.95+.22*sin(q),y=-1.38+i*.14-.0175,z=.055+.025*cos(q),bend=i===2?.10:0;
+     const points=bend?[[-.325,-.035,-.025],[0,-.035,-.025],[.325,-.035-bend,-.025],[.325,.035-bend,0],[0,.035,0],[-.325,.035,0]]:[[-.325,-.035,-.025],[.325,-.035,-.025],[.325,.035,0],[-.325,.035,0]];
+     return points.map(([u,v,h])=>[x+u,y+v,z+h]);});
     out.features=[at(out.boat,[.21,0,.07]),out.waves[0][2]];break;
    }
    default:throw Error('Unknown eastern motion '+id);

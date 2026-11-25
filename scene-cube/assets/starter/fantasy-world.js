@@ -51,8 +51,11 @@
   }
   case 'fantasy_starspring':{
    m.grains=Array.from({length:16},(_,i)=>{const arm=Math.floor(i/8),q=phase(t+(i%8)*.625+arm*.08,5),a=tau*(1.5*q+arm*.5),r=.18+.37*q;return {p:[.10+r*cos(a),-.20+r*sin(a),.10+.55*q],size:.055,alpha:smooth(0,.08,q)*(1-smooth(.83,1,q))};});
-   m.pendant=pendant([-.57,.67,.94],.21,30*Math.PI/180*sin(angle(t,3)));
-   m.features=[add(m.grains[4].p,grainPoint([0,0,.0275])),m.pendant.point([0,0,-.41])];m.featureVisible[0]=m.grains[4].alpha>.006;break;
+   m.pendant=pendant([-.57,.67,1.10],.21,30*Math.PI/180*sin(angle(t,3)));
+   // Enlarge only the stone about its cord attachment; preserve its aspect
+   // ratio, 3s/±30° swing and .53 minimum height, not the cord or camera.
+   m.pendant.bodyPoint=p=>m.pendant.point([p[0]*1.8,p[1]*1.8,-.21+(p[2]+.21)*1.8]);
+   m.features=[add(m.grains[4].p,grainPoint([0,0,.0275])),m.pendant.bodyPoint([0,0,-.41])];m.featureVisible[0]=m.grains[4].alpha>.006;break;
   }
   case 'fantasy_dragon':{
    m.breathing=.04*(.5+.5*sin(angle(t,3)));const wave=sin(angle(t,4));
@@ -74,7 +77,7 @@
   fantasy_crystal:[[-1.42,.61,0,1.42,1.42,1.27],[-.94,.07,0,-.33,.53,1.18],[.72,-.89,0,1.15,-.40,.48],[.09,-.21,0,.97,.01,.37],[-.19,-.67,.37,.39,-.09,.91],[-.50,-.70,.02,.60,.40,.03]],
   fantasy_ruins:[[-1.19,-.29,.04,-.21,.69,.32],[.02,-.08,.04,.88,.78,.44],[-.16,-1.06,.04,.46,-.44,.22],[-.37,.27,.42,1.27,.43,1.28],[-1.05,.10,.30,-.86,.40,.67],[.64,.42,.42,.80,.59,.92],[-.73,-.065,.3,-.31,.165,1.13],[-.044,-.04,.40,.944,.20,1.12],[-.10,-1.22,.008,.55,-.75,.21]],
   fantasy_treehouse:[[-1.16,-.28,.005,.20,.88,.40],[-.69,.06,.02,-.27,.50,1.27],[-1.30,.43,.87,.35,1.42,1.38],[-.93,-.09,.30,.09,.64,.95],[-.20,-.88,.025,.70,-.04,.37],[-.46,-.70,.47,.86,-.06,.83],[-.25,-.33,.57,.15,-.23,.98]],
-  fantasy_starspring:[[-.83,-1.00,0,1.03,.58,.16],[-1.07,.60,.02,-.43,1.02,1.16],[.76,.10,0,1.43,1.30,.50],[-.50,-.80,.07,.70,.40,.69],[-.85,.63,.48,-.29,.71,.96],[-.08,-1.25,.025,.38,-.75,.11]],
+  fantasy_starspring:[[-.83,-1.00,0,1.03,.58,.16],[-1.07,.60,.02,-.43,1.02,1.16],[.76,.10,0,1.43,1.30,.50],[-.50,-.80,.07,.70,.40,.69],[-.88,.59,.48,-.26,.75,1.12],[-.08,-1.25,.025,.38,-.75,.11]],
   fantasy_dragon:[[-1.31,.53,0,1.33,1.40,1.25],[-1.26,-.96,0,1.53,.76,.19],[-.915,-.62,.10,1.17,.40,.77],[-.89,-.73,.10,-.37,-.36,.30],[.06,-.12,.16,1.275,.49,.37],[.885,-1.12,.53,1.155,-.55,.73]]
  };
  const cached=new Map();function bounds(id){if(cached.has(id))return cached.get(id);if(!components[id])throw Error('Unknown fantasy bounds '+id);const cells=Array.from({length:9},(_,i)=>{const lo=[i%3-1.5,.5-Math.floor(i/3),0],hi=[i%3-.5,1.5-Math.floor(i/3),.05],parts=[{lo:lo.slice(),hi:hi.slice()}];for(const [x,y,z,a,b,c]of components[id])if(x<=hi[0]+1e-9&&a>=lo[0]-1e-9&&y<=hi[1]+1e-9&&b>=lo[1]-1e-9){hi[2]=Math.max(hi[2],c);parts.push({lo:[Math.max(lo[0],x),Math.max(lo[1],y),0],hi:[Math.min(hi[0],a),Math.min(hi[1],b),c]});}const points=[];for(const box of parts)for(const x of [box.lo[0],box.hi[0]])for(const y of [box.lo[1],box.hi[1]])for(const z of [box.lo[2],box.hi[2]])points.push(Object.freeze([x,y,z]));return Object.freeze({lo:Object.freeze(lo),hi:Object.freeze(hi),parts:Object.freeze(parts),points:Object.freeze(points)});});cached.set(id,Object.freeze(cells));return cells;}

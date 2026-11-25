@@ -61,7 +61,7 @@
  }
  function springFixed(b){const id='fantasy_starspring';terrain(b,id);for(let i=0;i<12;i++){const q=tau*i/12,p={p:[.10+.80*cos(q),-.20+.68*sin(q),.085],angle:q};localBox(b,v=>W.at(p,v),0,0,0,.20,.13,.09,i%2?'#a79d91':'#c3ba9e');}
   for(let i=0;i<3;i++)rock(b,1.06,.36+i*.25,.04,.31-i*.025,.28,.14+i*.15,101+i,['#6f6682','#8e839a','#b0a08c']);
-  b.branch([-.75,.70,.04],[-.75,.80,.52],.075,.055,'#5d607c',6);beam(b,[-.75,.80,.50],[-.96,.80,1.00],.045,'#6f7488');beam(b,[-.75,.80,.50],[-.57,.80,.94],.042,'#747f92');beam(b,[-.57,.80,.94],[-.57,.67,.94],.014,'#c7b78f');
+  b.branch([-.75,.70,.04],[-.75,.80,.52],.075,.055,'#5d607c',6);beam(b,[-.75,.80,.50],[-.96,.80,1.00],.045,'#6f7488');beam(b,[-.75,.80,.50],[-.57,.80,1.10],.042,'#747f92');beam(b,[-.57,.80,1.10],[-.57,.67,1.10],.014,'#c7b78f');
   const center=[-.89,.80,1.00],star=Array.from({length:10},(_,i)=>{const q=Math.PI/2+tau*i/10,r=i%2?.052:.12;return [center[0]+r*cos(q),center[1]-.014,center[2]+r*sin(q)];});for(let i=0;i<10;i++)b.face([center,star[i],star[(i+1)%10]],i%2?'#e4cd90':'#fff0b4');
   for(let i=0;i<4;i++){const y=-1.17+i*.10;disk(b,.10+.06*sin(i),y,.07+i*.005,.09,.07,'#b6ac94',6);}
  }
@@ -95,7 +95,7 @@
  function libraryLiving(b,m){for(const book of m.books){for(const [i,page]of book.pages.entries()){quad(b,page,i?'#fff2cf':'#e5d49f');beam(b,page[2],page[3],.005,'#698e91');}beam(b,book.pages[0][0],book.pages[0][1],.006,'#476879');}
   const a=m.lantern;beam(b,a.pivot,a.attachment,.007,'#c9b98c');localBox(b,a.point,0,0,-.295,.10,.07,.13,'#ffdc87');for(const x of [-.05,.05])for(const y of [-.035,.035])beam(b,a.point([x,y,-.23]),a.point([x,y,-.36]),.006,'#805944');
  }
- function springLiving(b,m){for(const a of m.grains)octa(b,a.p,a.size/2,'#ffe5a1',a.alpha,W.grainPoint);const a=m.pendant;beam(b,a.pivot,a.attachment,.007,'#c6bb95');const ring=[[.055,0,-.31],[0,-.03,-.31],[-.055,0,-.31],[0,.03,-.31]];for(let i=0;i<4;i++){b.face([[0,0,-.21],ring[i],ring[(i+1)%4]].map(a.point),'#b9f0dd');b.face([[0,0,-.41],ring[(i+1)%4],ring[i]].map(a.point),'#f5dfaa');}}
+ function springLiving(b,m){for(const a of m.grains)octa(b,a.p,a.size/2,'#ffe5a1',a.alpha,W.grainPoint);const a=m.pendant;beam(b,a.pivot,a.attachment,.007,'#c6bb95');const ring=[[.055,0,-.31],[0,-.03,-.31],[-.055,0,-.31],[0,.03,-.31]];for(let i=0;i<4;i++){b.face([[0,0,-.21],ring[i],ring[(i+1)%4]].map(a.bodyPoint),'#b9f0dd');b.face([[0,0,-.41],ring[(i+1)%4],ring[i]].map(a.bodyPoint),'#f5dfaa');}}
  function dragonLiving(b,m){const start=b.shapes.length;
   // ell closes over its builder's face, so use an explicit four-band hull here
   // to keep only its upper surface breathing while all four feet stay fixed.

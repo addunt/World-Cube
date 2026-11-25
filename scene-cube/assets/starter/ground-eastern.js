@@ -229,7 +229,7 @@
    case 'eastern_zentemple':zenLiving(b,m,t);break;
    case 'eastern_li_river':riverLiving(b,m);break;
    case 'eastern_tea_trail':teaLiving(b,m);break;
-   case 'eastern_seacliff':vessel(b,m.boat,.42,.18,true);for(const p of m.waves)quad(b,p,'#d6e8df');break;
+   case 'eastern_seacliff':vessel(b,m.boat,.42,.18,true);for(const p of m.waves){if(p.length===6){quad(b,[p[0],p[1],p[4],p[5]],'#d6e8df');quad(b,[p[1],p[2],p[3],p[4]],'#d6e8df');}else quad(b,p,'#d6e8df');}break;
   }
  }
  root.GroundEastern=Object.freeze({draw,surface:W.surface,height:W.height,bounds:W.bounds,palettes:inks});
